@@ -16,16 +16,6 @@
 The Goal of this project is to develop a Particle simulator which calculates at each instant the updated position of each particle in space, due to the effect of gravitational pull from other particles.
 A first instance is a serial implementation of the simulator, then we will produce a parallelized version of the solution using openMP, and finally the last instance will be implemented using MPI.
 
-## Command Line Parameters
-
-| Parameter     | data type  | Description                                         |
-|:--------------|:----------:|:----------------------------------------------------|
-| seed          | long       | Seed for random number generator.                   |
-| ncside        | long       | Size of the 2D grid - number of cells on the side.  |
-| n_part        | long long  | Number of particles to simulate.                    |
-| n_steps       | long       | Number of time-steps to simulate.                   |
-
-
 ## Compiling and Running
 
 To run this project solutions GCC is advised.
@@ -37,3 +27,12 @@ To run this project solutions GCC is advised.
 ### Run
 - serial solution:    `./simpar <seed> <ncside> <n_part> <n_steps>`
 - parallel solution:  `./simpar-omp <seed> <ncside> <n_part> <n_steps>`
+
+#### Command Line Parameters
+
+| Parameter     | data type  | Description                                         |
+|:--------------|:----------:|:----------------------------------------------------|
+| seed          | long       | Seed for random number generator.                   |
+| ncside        | long       | Size of the 2D grid - number of cells on the side.  |
+| n_part        | long long  | Number of particles to simulate.                    |
+| n_steps       | long       | Number of time-steps to simulate.                   |
