@@ -31,5 +31,9 @@ A first instance is a serial implementation of the simulator, then we will produ
 To run this project solutions GCC is advised.
 
 ### Compile
-- serial solution:    `gcc simpar.c -lm -o simpar`
-- parallel solution:  `gcc simpar-omp.c -lm -fpopenmp -o simpar-omp`
+- Serial solution:    `gcc simpar.c -lm -o simpar`
+- Parallel solution:  `gcc simpar-omp.c -lm -fpopenmp -o simpar-omp`
+
+### Run
+- serial solution:    `./simpar <seed> <ncside> <n_part> <n_steps>`
+- parallel solution:  `./simpar-omp <seed> <ncside> <n_part> <n_steps>`
