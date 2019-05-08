@@ -106,89 +106,92 @@ void accellerate_p(double* ax, double* ay, const cell_t* c, double m, double x, 
     *ay += dy * mag;
 }
 
-void update_particles(cell_t** x, long ncside, particle_t* par, long long n_par, long n_step, long step){
+void update_particles(cell_t** x, long ncside, particle_t* par, long long n_par, long n_step){
     double m, px, py, ax, ay;
     long cx, cy, nx, ny, ux, uy, lx, ly;
 
-    #pragma omp parallel if(n_par*n_step > 1000000)
+    for(long step = 0; step < n_step; step++)
     {
-      #pragma omp for private(m, px, py, ax, ay, cx, cy, nx, ny, ux, uy, lx, ly), reduction(+:t_mass, t_cx, t_cy), schedule(dynamic, 1000)
-      for(long long i=0; i<n_par; i++){
-          m = par[i].m;
-          px = par[i].x;
-          py = par[i].y;
-          cx = (long) px * ncside, nx;
-          cy = (long) py * ncside, ny;
-          ux = cx+1; uy = cy+1; lx = cx-1; ly = cy-1;
-          if(ux >= ncside) ux = 0;
-          else if(lx < 0) lx = ncside-1;
-          if(uy >= ncside) uy = 0;
-          else if(ly < 0) ly = ncside-1;
+      #pragma omp parallel if(n_par*n_step > 1000000)
+      {
+        #pragma omp for private(m, px, py, ax, ay, cx, cy, nx, ny, ux, uy, lx, ly), reduction(+:t_mass, t_cx, t_cy), schedule(dynamic, 1000)
+        for(long long i=0; i<n_par; i++){
+            m = par[i].m;
+            px = par[i].x;
+            py = par[i].y;
+            cx = (long) px * ncside, nx;
+            cy = (long) py * ncside, ny;
+            ux = cx+1; uy = cy+1; lx = cx-1; ly = cy-1;
+            if(ux >= ncside) ux = 0;
+            else if(lx < 0) lx = ncside-1;
+            if(uy >= ncside) uy = 0;
+            else if(ly < 0) ly = ncside-1;
 
-          ax = 0.0;
-          ay = 0.0;
+            ax = 0.0;
+            ay = 0.0;
 
-          accellerate_p(&ax, &ay, &(dummy[cx][cy]), m, px, py); // current cell
-          accellerate_p(&ax, &ay, &(dummy[ux][cy]), m, px, py); // right cell
-          accellerate_p(&ax, &ay, &(dummy[lx][cy]), m, px, py); // left cell
-          //upper adjacents
-          accellerate_p(&ax, &ay, &(dummy[cx][uy]), m, px, py); // upper cell
-          accellerate_p(&ax, &ay, &(dummy[lx][uy]), m, px, py); // upper left cell
-          accellerate_p(&ax, &ay, &(dummy[ux][uy]), m, px, py); // upper right cell
-          //lower adjacents
-          accellerate_p(&ax, &ay, &(dummy[cx][ly]), m, px, py); // lower cell
-          accellerate_p(&ax, &ay, &(dummy[lx][ly]), m, px, py); // lower left cell
-          accellerate_p(&ax, &ay, &(dummy[ux][ly]), m, px, py); // lower right cell
+            accellerate_p(&ax, &ay, &(dummy[cx][cy]), m, px, py); // current cell
+            accellerate_p(&ax, &ay, &(dummy[ux][cy]), m, px, py); // right cell
+            accellerate_p(&ax, &ay, &(dummy[lx][cy]), m, px, py); // left cell
+            //upper adjacents
+            accellerate_p(&ax, &ay, &(dummy[cx][uy]), m, px, py); // upper cell
+            accellerate_p(&ax, &ay, &(dummy[lx][uy]), m, px, py); // upper left cell
+            accellerate_p(&ax, &ay, &(dummy[ux][uy]), m, px, py); // upper right cell
+            //lower adjacents
+            accellerate_p(&ax, &ay, &(dummy[cx][ly]), m, px, py); // lower cell
+            accellerate_p(&ax, &ay, &(dummy[lx][ly]), m, px, py); // lower left cell
+            accellerate_p(&ax, &ay, &(dummy[ux][ly]), m, px, py); // lower right cell
 
-          //update velocity
-          par[i].vx += ax;
-          par[i].vy += ay;
+            //update velocity
+            par[i].vx += ax;
+            par[i].vy += ay;
 
-          //update position
-          par[i].x += par[i].vx + ax*0.5;
-          while(par[i].x >= 1.0) par[i].x -= 1.0;
-          while(par[i].x < 0.0) par[i].x += 1.0;
+            //update position
+            par[i].x += par[i].vx + ax*0.5;
+            while(par[i].x >= 1.0) par[i].x -= 1.0;
+            while(par[i].x < 0.0) par[i].x += 1.0;
 
-          par[i].y += par[i].vy + ay*0.5;
-          while(par[i].y >= 1.0) par[i].y -= 1.0;
-          while(par[i].y < 0.0) par[i].y += 1.0;
+            par[i].y += par[i].vy + ay*0.5;
+            while(par[i].y >= 1.0) par[i].y -= 1.0;
+            while(par[i].y < 0.0) par[i].y += 1.0;
 
-          //update cells if cell changed maybe outside loop?
-          nx = (long) par[i].x*ncside;
-          ny = (long) par[i].y*ncside;
-          if(cx-nx || cy-ny){
-              if(cx-nx) par[i].cx = nx;
-              if(cy-ny) par[i].cy = ny;
+            //update cells if cell changed maybe outside loop?
+            nx = (long) par[i].x*ncside;
+            ny = (long) par[i].y*ncside;
+            if(cx-nx || cy-ny){
+                if(cx-nx) par[i].cx = nx;
+                if(cy-ny) par[i].cy = ny;
 
-              #pragma omp atomic
-              x[cx][cy].M -= m;
-              #pragma omp atomic
-              x[cx][cy].x -= m * px;
-              #pragma omp atomic
-              x[cx][cy].y -= m * py;
+                #pragma omp atomic
+                x[cx][cy].M -= m;
+                #pragma omp atomic
+                x[cx][cy].x -= m * px;
+                #pragma omp atomic
+                x[cx][cy].y -= m * py;
 
-              #pragma omp atomic
-              x[nx][ny].M += m;
-              #pragma omp atomic
-              x[nx][ny].x += m * par[i].x;
-              #pragma omp atomic
-              x[nx][ny].y += m * par[i].y;
-          }
+                #pragma omp atomic
+                x[nx][ny].M += m;
+                #pragma omp atomic
+                x[nx][ny].x += m * par[i].x;
+                #pragma omp atomic
+                x[nx][ny].y += m * par[i].y;
+            }
 
-          if(n_step-1-step == 0){
-              t_mass += par[i].m;
-              t_cx += par[i].m * par[i].x;
-              t_cy += par[i].m * par[i].y;
-          }
+            if(n_step-1-step == 0){
+                t_mass += par[i].m;
+                t_cx += par[i].m * par[i].x;
+                t_cy += par[i].m * par[i].y;
+            }
+        }
       }
-    }
 
-    #pragma omp parallel for
-    for(long c = 0; c<ncside; c++){
-        for(long l = 0; l<ncside; l++){
-		dummy[c][l] = x[c][l];
-	}
-    }
+      #pragma omp parallel for
+      for(long c = 0; c<ncside; c++){
+          for(long l = 0; l<ncside; l++){
+  		        dummy[c][l] = x[c][l];
+  	       }
+      }
+  }
 }
 
 int main(int argc, const char * argv[]) {
@@ -215,9 +218,7 @@ int main(int argc, const char * argv[]) {
 
     init_env(grid, ncside, par, n_par);
 
-    for(long step = 0; step < n_step; step++){
-        update_particles(grid, ncside, par, n_par, n_step, step);
-    }
+    update_particles(grid, ncside, par, n_par, n_step);
 
     t_cx /= t_mass;
     t_cy /= t_mass;

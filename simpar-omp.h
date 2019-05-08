@@ -150,6 +150,6 @@ void accellerate_p(double* ax, double* ay, const cell_t* c, double m, double x, 
  * @param n_step Number of timesteps.
  * @param step Current timestep.
  */
-void update_particles(cell_t** x, long ncside, particle_t* par, long long n_par, long n_step, long step);
+void update_particles(cell_t** x, long ncside, particle_t* par, long long n_par, long n_step);
 
 #endif /* simpar_h */
