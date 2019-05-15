@@ -16,7 +16,7 @@ void usg_err(){
     exit(1);
 }
 
-long long val_l(const char* arg){
+long long val_l(const char* arg, char* msg){
     char *endptr;
     long long x = strtol(arg, &endptr, 10);
     if (endptr == arg) {
