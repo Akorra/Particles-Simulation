@@ -103,7 +103,7 @@ void free_grid(cell_t** g, long ncside);
  * @param n_part Number of particles.
  * @param p Pointer to an array of particles.
  */
-void init_particles(long seed, long ncside, long long n_part, particle_t *par);
+void init_particles(long seed, long ncside, long long n_part, particle_t *par, cell_t** grid);
 
 /**
  * @brief Initialize Environment, i.e, grid and set particles grid positions.

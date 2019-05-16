@@ -16,7 +16,7 @@ void usg_err(){
     exit(1);
 }
 
-long long val_l(const char* arg, char* msg){
+long long val_l(const char* arg){
     char *endptr;
     long long x = strtol(arg, &endptr, 10);
     if (endptr == arg) {
@@ -47,7 +47,7 @@ void free_grid(cell_t** g, long ncside){
     free(g);
 }
 
-void init_particles(long seed, long ncside, long long n_part, particle_t *par){
+void init_particles(long seed, long ncside, long long n_part, particle_t *par, cell_t** grid){
     long long i;
     srandom(seed);
     for(i=0; i < n_part; i++){
@@ -56,6 +56,13 @@ void init_particles(long seed, long ncside, long long n_part, particle_t *par){
         par[i].vx = RND0_1 / ncside / 10.0;
         par[i].vy = RND0_1 / ncside / 10.0;
         par[i].m = RND0_1 * ncside / (G * 1e6 * n_part);
+
+        /* init_env*/
+        par[i].cx = (long) par[i].x * ncside;
+        par[i].cy = (long) par[i].y * ncside;
+        grid[par[i].cx][par[i].cy].M += par[i].m;
+        grid[par[i].cx][par[i].cy].x += par[i].m * par[i].x;
+        grid[par[i].cx][par[i].cy].y += par[i].m * par[i].y;
     }
 }
 
@@ -170,13 +177,14 @@ int main(int argc, const char * argv[]) {
     int elapsed_t;
     start_t = time(NULL);
 
-    particle_t* par = (particle_t*)calloc(n_par, sizeof(particle_t));
-    init_particles(seed, ncside, n_par, par);
-
     cell_t** grid = init_grid(ncside);
+    particle_t* par = (particle_t*)calloc(n_par, sizeof(particle_t));
+
     if(grid==NULL || par == NULL) exit(0);
 
-    init_env(grid, ncside, par, n_par);
+    init_particles(seed, ncside, n_par, par, grid);
+
+    /* init_env(grid, ncside, par, n_par); */
 
     for(long step = 0; step < n_step; step++){
         update_particles(grid, ncside, par, n_par, n_step, step);
