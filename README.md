@@ -22,11 +22,13 @@ To run this project solutions GCC is advised.
 
 ### Compile
 - Serial solution:    `gcc simpar.c -lm -o simpar`
-- Parallel solution:  `gcc simpar-omp.c -lm -fpopenmp -o simpar-omp`
+- Parallel OMP solution:  `gcc simpar-omp.c -lm -fpopenmp -o simpar-omp`
+- Parallel MPI solution:  `mpicc -o simpar-mpi simpar-mpi.c -lm`
 
 ### Run
-- serial solution:    `./simpar <seed> <ncside> <n_part> <n_steps>`
-- parallel solution:  `./simpar-omp <seed> <ncside> <n_part> <n_steps>`
+- Serial solution:    `./simpar <seed> <ncside> <n_part> <n_steps>`
+- Parallel OMP solution:  `./simpar-omp <seed> <ncside> <n_part> <n_steps>`
+- Parallel MPI solution: `mpirun -np <n_procs> simpar-mpi <seed> <ncside> <n_part> <n_steps>`
 
 #### Command Line Parameters
 
@@ -36,3 +38,4 @@ To run this project solutions GCC is advised.
 | ncside        | long       | Size of the 2D grid - number of cells on the side.  |
 | n_part        | long long  | Number of particles to simulate.                    |
 | n_steps       | long       | Number of time-steps to simulate.                   |
+| n_procs       | int        | Number of processes                                 |
