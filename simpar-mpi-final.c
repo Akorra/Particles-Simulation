@@ -48,6 +48,23 @@ void init_particles(long seed, long ncside, long long n_part, particle_t *par, c
     }
 }
 
+void scatter_particles(long long n_par, long long loc_n, particle_t *loc_par){
+  int i, sum=0;
+  int counts[comm_sz], disps[comm_sz];
+  double rem = n_par%comm_sz;
+
+  for(i = 0; i<comm_sz; i++){
+  	counts[i] = n_par/comm_sz;
+  	if(rem>0){
+  		counts[i]++;
+  		rem--;
+  	}
+  	disps[i] = sum;
+  	sum += counts[i];
+  }
+  MPI_Scatterv(par, counts, disps, MPI_PARTICLE_T, loc_par, loc_n, MPI_PARTICLE_T, 0, MPI_COMM_WORLD);
+}
+
 void init_grid(long ncside){
   for(long idx=0; idx<ncside*ncside; idx++){
     MPI_Allreduce(&(grid[idx].M), &(grid[idx].M), 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
@@ -208,21 +225,8 @@ int main(int argc, char *argv[]){
     par = (particle_t*)calloc(n_par, sizeof(particle_t));
     init_particles(seed, ncside, n_par, par, grid);
   }
-
-  int i, sum=0;
-  int counts[comm_sz], disps[comm_sz];
-  double rem = n_par%comm_sz;
-
-  for(i = 0; i<comm_sz; i++){
-  	counts[i] = n_par/comm_sz;
-  	if(rem>0){
-  		counts[i]++;
-  		rem--;
-  	}
-  	disps[i] = sum;
-  	sum += counts[i];
-  }
-  MPI_Scatterv(par, counts, disps, MPI_PARTICLE_T, loc_par, loc_n, MPI_PARTICLE_T, 0, MPI_COMM_WORLD);
+  
+  scatter_particles(n_par, loc_n, loc_par);
   init_grid(ncside);
 
   MPI_Barrier(MPI_COMM_WORLD);
@@ -238,7 +242,7 @@ int main(int argc, char *argv[]){
     printf("%.2f %.2f\n", t_cx, t_cy);
     //printf("%.2f\n", finish-start);
   }
-  
+
   exit_routine(loc_par);
   return 0;
 }
