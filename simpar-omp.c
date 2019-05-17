@@ -57,7 +57,6 @@ void free_grid(cell_t** g, long ncside){
 void init_particles(long seed, long ncside, long long n_part, particle_t *par, cell_t** grid){
     long long i;
     srandom(seed);
-    #pragma parallel for
     for(i=0; i < n_part; i++){
         par[i].x = RND0_1;
         par[i].y = RND0_1;
@@ -67,17 +66,12 @@ void init_particles(long seed, long ncside, long long n_part, particle_t *par, c
 
         par[i].cx = (long) par[i].x * ncside;
         par[i].cy = (long) par[i].y * ncside;
-        #pragma omp atomic
+        
         grid[par[i].cx][par[i].cy].M += par[i].m;
-        #pragma omp atomic
         dummy[par[i].cx][par[i].cy].M += par[i].m;
-        #pragma omp atomic
         grid[par[i].cx][par[i].cy].x += par[i].m * par[i].x;
-        #pragma omp atomic
 	      dummy[par[i].cx][par[i].cy].x += par[i].m * par[i].x;
-        #pragma omp atomic
         grid[par[i].cx][par[i].cy].y += par[i].m * par[i].y;
-        #pragma omp atomic
         dummy[par[i].cx][par[i].cy].y += par[i].m * par[i].y;
     }
 }

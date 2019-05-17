@@ -9,55 +9,37 @@
  * as variables. For a detailed overview of the project visit the link below.
  */
 
-#ifndef simpar_mpi_h
-#define simpar_mpi_h
+#ifndef simpar_mpi_v_h
+#define simpar_mpi_v_h
 
 #include <stdio.h>
 #include <stdlib.h>
 #include <math.h>
 #include <time.h>
 #include <mpi.h>
-#include <omp.h>
 
 #define RND0_1 ((double) random() / ((long long)1<<31)) /*Random number generator*/
 #define G 6.67408e-11 /*Gravitation*/
 #define EPSLON 0.0005 /*distance threshold*/
 
-int id, comm_sz;
-MPI_Datatype particle_mpi_t;
+#define X 0
+#define Y 1
+
+#define M 2 /* Center of mass */
+
+#define VX 2
+#define VY 3
+
+typedef double cell_t[3];
+typedef double particle_t[4];
+
+int rank, comm_sz;
 MPI_Datatype cell_mpi_t;
+MPI_Datatype particle_mpi_t;
 
-/**
- * @brief Particle.
- *
- * A particle containing information about its position,
- * velocity, mass and grid position at a given time-step
- * and its constant mass.
- **/
-typedef struct particle_t{
-    double x, y;    /**<position (x, y) in 2D space. */
-    double vx, vy;  /**<velocity (vx, vy) in 2D space. */
-    double m;
-}particle_t;
-
-/**
- * @brief Grid cell in 2D space.
- *
- * A grid cell containing a point representing the center of mass and the total
- * mass of all the particles inside this cell..
- **/
-typedef struct cell_t{
-    double x, y; /**< center of mass of the cell. */
-    double M;    /**< total mass of the cell. */
-}cell_t;
 
 double t_mass = 0.0;            /* global variable to hold the total mass of the grid */
 double t_cx = 0.0, t_cy = 0.0;  /* global variables to hold  the position of the total center of mass*/
-
-double* par_m;
-particle_t* par;
-cell_t* grid;
-
 
 /**
  * @brief Output usage command error to console.
@@ -112,8 +94,7 @@ void free_grid(cell_t** g, long ncside);
  * @param n_part Number of particles.
  * @param p Pointer to an array of particles.
  */
- void init_particles(long seed, long ncside, long long n_part, particle_t *par, cell_t* grid);
-
+void init_particles(long seed, long ncside, long long n_part, long long loc_n, particle_t *par, particle_t* loc_par, cell_t** grid, double* masses);
 
 /**
  * @brief Initialize Environment, i.e, grid and set particles grid positions.
@@ -160,6 +141,6 @@ void accellerate_p(double* ax, double* ay, const cell_t* c, double m, double x, 
  * @param n_step Number of timesteps.
  * @param step Current timestep.
  */
-void update_particles(long ncside, particle_t* par, long long n_par, long n_step);
+void update_particles(cell_t** x, long ncside, particle_t* par, long long n_par, long n_step, long step);
 
-#endif /* simpar_mpi_h */
+#endif /* simpar_h */
