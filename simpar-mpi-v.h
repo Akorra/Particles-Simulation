@@ -34,8 +34,7 @@ typedef double cell_t[3];
 typedef double particle_t[4];
 
 int rank, comm_sz;
-MPI_Datatype cell_mpi_t;
-MPI_Datatype particle_mpi_t;
+MPI_Datatype MPI_PARTICLE_T;
 
 
 double t_mass = 0.0;            /* global variable to hold the total mass of the grid */

@@ -17,7 +17,6 @@
 #include <math.h>
 #include <time.h>
 #include <mpi.h>
-#include <omp.h>
 
 #define RND0_1 ((double) random() / ((long long)1<<31)) /*Random number generator*/
 #define G 6.67408e-11 /*Gravitation*/
@@ -57,6 +56,9 @@ double t_cx = 0.0, t_cy = 0.0;  /* global variables to hold  the position of the
 double* par_m;
 particle_t* par;
 cell_t* grid;
+
+MPI_Datatype MPI_PARTICLE_T;
+
 
 
 /**

@@ -101,9 +101,6 @@ void update_particles(long ncside, particle_t* par, long long n_par, long n_step
     cell_t* x = (cell_t*)calloc(ncside*ncside, sizeof(cell_t));
 
     for(long step = 0; step < n_step; step++){
-      #pragma omp parallel //if(n_par*n_step > 1000000)
-      {
-      #pragma omp for private(m, px, py, ax, ay, cx, cy, nx, ny, ux, uy, lx, ly), reduction(+:t_mass, t_cx, t_cy), schedule(dynamic, 1000)
       for(long long i=0; i<n_par; i++){
         m = par[i].m;
         px = par[i].x;
@@ -166,7 +163,6 @@ void update_particles(long ncside, particle_t* par, long long n_par, long n_step
           t_cy += m * par[i].y;
         }
       }
-      }
 
       for(long c = 0; c<ncside*ncside; c++){
     		 MPI_Allreduce(&(x[c].M), &(grid[c].M), 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
@@ -194,6 +190,10 @@ int main(int argc, char *argv[]){
   MPI_Comm_size(MPI_COMM_WORLD, &comm_sz);
   MPI_Comm_rank(MPI_COMM_WORLD, &id);
 
+  //declare particle datatype
+  MPI_Type_contiguous(5, MPI_DOUBLE, &MPI_PARTICLE_T);
+  MPI_Type_commit(&MPI_PARTICLE_T);
+
   if(argc!=5){
     MPI_Finalize();
     if(!id) printf("[-] ERROR: Invalid number of arguments... Expected 4 but got %d\n", argc-1);
@@ -214,7 +214,7 @@ int main(int argc, char *argv[]){
   if(!id){
     par = (particle_t*)calloc(n_par,sizeof(particle_t));
     init_particles(seed, ncside, n_par, par, grid);
-    scatter_particles(n_par, par);
+    //scatter_particles(n_par, par);
   }
 
   if(n_par%comm_sz && (n_par%comm_sz) > id){
@@ -224,12 +224,29 @@ int main(int argc, char *argv[]){
     loc_n = (n_par/comm_sz);
     loc_par = (particle_t*)calloc(loc_n, sizeof(particle_t));
   }
+
+
+  int c, sum=0;
+  int counts[comm_sz];
+  int disps[comm_sz];
+  double rem = n_par%comm_sz;
+  for(c = 0; c<comm_sz; c++){
+  	counts[c] = n_par/comm_sz;
+  	if(rem>0){
+  		counts[c]++;
+  		rem--;
+  	}
+  	disps[c] = sum;
+  	sum += counts[c];
+  }
+  MPI_Scatterv(par, counts, disps, MPI_PARTICLE_T, loc_par, loc_n, MPI_PARTICLE_T, 0, MPI_COMM_WORLD);
+  
   grid_reduce(ncside);
 
   MPI_Barrier(MPI_COMM_WORLD);
 
   start = MPI_Wtime();
-  gather_particles(loc_n, loc_par);
+  //gather_particles(loc_n, loc_par);
 
   update_particles(ncside, loc_par, loc_n, n_step);
 
@@ -242,6 +259,7 @@ int main(int argc, char *argv[]){
     t_cy /= t_mass;
     printf("%.2f %.2f\n", loc_par[0].x, loc_par[0].y);
     printf("%.2f %.2f\n", t_cx, t_cy);
+    printf("%.2f\n", finish-start);
   }
 
   MPI_Finalize();
