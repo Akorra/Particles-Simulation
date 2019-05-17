@@ -1,4 +1,4 @@
-#include "simpar-mpi.h"
+#include "simpar-mpi-final.h"
 
 void usg_err(int rank){
     if(!rank){
@@ -30,7 +30,7 @@ long long val_l(const char* arg, int rank){
 
 void init_particles(long seed, long ncside, long long n_part, particle_t *par, cell_t* grid){
     long long i;
-    long cx, cy, idx;
+    long idx;
 
     srandom(seed);
     for(i=0; i < n_part; i++){
@@ -41,41 +41,30 @@ void init_particles(long seed, long ncside, long long n_part, particle_t *par, c
         par[i].m = RND0_1 * ncside / (G * 1e6 * n_part);
 
         /* init_env*/
-        cx = (long) par[i].x * ncside;
-        cy = (long) par[i].y * ncside;
-        idx = cx*ncside+cy;
+        idx = ((par[i].x*ncside)+par[i].y)*ncside;
         grid[idx].M += par[i].m;
         grid[idx].x += par[i].m * par[i].x;
         grid[idx].y += par[i].m * par[i].y;
     }
 }
 
-int grid_reduce(long ncside){
-  long idx;
-  for(idx=0; idx<ncside*ncside; idx++){
+void init_grid(long ncside){
+  for(long idx=0; idx<ncside*ncside; idx++){
     MPI_Allreduce(&(grid[idx].M), &(grid[idx].M), 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
     MPI_Allreduce(&(grid[idx].x), &(grid[idx].x), 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
     MPI_Allreduce(&(grid[idx].y), &(grid[idx].y), 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
   }
-  return(0);
 }
 
-int scatter_particles(long long n_par, particle_t* par){
-    int dest = 0;
-    long long p;
-
-    for(p = 0; p < n_par; p++){
-      MPI_Send(&(par[p]), 5, MPI_DOUBLE, p%comm_sz, 1, MPI_COMM_WORLD);
-    }
-    return 0;
-}
-
-int gather_particles(long long loc_n, particle_t* loc_par){
-  int flag = 1;
-  long long i = 0;
-  for(i=0; i<loc_n; i++){
-    MPI_Recv(&(loc_par[i]), 5, MPI_DOUBLE, MPI_ANY_SOURCE, 1, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+void exit_routine(particle_t* loc){
+  if(!rank && par){
+    free(par);
   }
+  if(grid) free(grid);
+  if(loc) free(loc);
+
+  MPI_Finalize();
+  exit(1);
 }
 
 void accellerate_p(double* ax, double* ay, const cell_t* c, double m, double x, double y){
@@ -181,91 +170,75 @@ void update_particles(long ncside, particle_t* par, long long n_par, long n_step
 }
 
 int main(int argc, char *argv[]){
-  double start, finish;
-  long j;
+  double strt_t, end_t;
   long long loc_n;
   particle_t* loc_par;
 
-
   MPI_Init(&argc, &argv);
   MPI_Comm_size(MPI_COMM_WORLD, &comm_sz);
-  MPI_Comm_rank(MPI_COMM_WORLD, &id);
+  MPI_Comm_rank(MPI_COMM_WORLD, &rank);
 
   //declare particle datatype
   MPI_Type_contiguous(5, MPI_DOUBLE, &MPI_PARTICLE_T);
   MPI_Type_commit(&MPI_PARTICLE_T);
 
+  //check parameters
   if(argc!=5){
-    MPI_Finalize();
-    if(!id) printf("[-] ERROR: Invalid number of arguments... Expected 4 but got %d\n", argc-1);
-    usg_err(id);
+    if(!rank) printf("[-] ERROR: Invalid number of arguments... Expected 4 but got %d\n", argc-1);
+    usg_err(rank);
+    exit_routine(NULL);
   }
 
-  const long seed = (long) val_l(argv[1], id);
-  const long ncside = (long) val_l(argv[2], id);
-  const long long n_par = val_l(argv[3], id);
-  const long n_step = (long) val_l(argv[4], id);
+  const long seed = (long) val_l(argv[1], rank);
+  const long ncside = (long) val_l(argv[2], rank);
+  const long long n_par = val_l(argv[3], rank);
+  const long n_step = (long) val_l(argv[4], rank);
   if(!(seed*ncside*n_par*n_step)){
-    MPI_Finalize();
-    usg_err(id);
+    usg_err(rank);
+    exit_routine(NULL);
   }
 
+  //get current process number of particles
+  loc_n = (n_par%comm_sz && (n_par%comm_sz) > rank) ? (n_par/comm_sz)+1 : (n_par/comm_sz);
+
+  //initialize arrays for gird, particles and particles local to current process
   grid = (cell_t*)calloc(ncside*ncside, sizeof(cell_t));
-
-  if(!id){
-    par = (particle_t*)calloc(n_par,sizeof(particle_t));
+  loc_par = (particle_t*)calloc(loc_n, sizeof(particle_t));
+  if(!rank){
+    par = (particle_t*)calloc(n_par, sizeof(particle_t));
     init_particles(seed, ncside, n_par, par, grid);
-    //scatter_particles(n_par, par);
   }
 
-  if(n_par%comm_sz && (n_par%comm_sz) > id){
-    loc_n = (n_par/comm_sz)+1;
-    loc_par = (particle_t*)calloc(loc_n, sizeof(particle_t));
-  }else{
-    loc_n = (n_par/comm_sz);
-    loc_par = (particle_t*)calloc(loc_n, sizeof(particle_t));
-  }
-
-
-  int c, sum=0;
-  int counts[comm_sz];
-  int disps[comm_sz];
+  int i, sum=0;
+  int counts[comm_sz], disps[comm_sz];
   double rem = n_par%comm_sz;
-  for(c = 0; c<comm_sz; c++){
-  	counts[c] = n_par/comm_sz;
+
+  for(i = 0; i<comm_sz; i++){
+  	counts[i] = n_par/comm_sz;
   	if(rem>0){
-  		counts[c]++;
+  		counts[i]++;
   		rem--;
   	}
-  	disps[c] = sum;
-  	sum += counts[c];
+  	disps[i] = sum;
+  	sum += counts[i];
   }
   MPI_Scatterv(par, counts, disps, MPI_PARTICLE_T, loc_par, loc_n, MPI_PARTICLE_T, 0, MPI_COMM_WORLD);
-
-  grid_reduce(ncside);
+  init_grid(ncside);
 
   MPI_Barrier(MPI_COMM_WORLD);
-
-  start = MPI_Wtime();
-  //gather_particles(loc_n, loc_par);
 
   update_particles(ncside, loc_par, loc_n, n_step);
 
   MPI_Barrier(MPI_COMM_WORLD);
 
-  finish = MPI_Wtime();
-
-  if(!id){
+  if(!rank){
     t_cx /= t_mass;
     t_cy /= t_mass;
     printf("%.2f %.2f\n", loc_par[0].x, loc_par[0].y);
     printf("%.2f %.2f\n", t_cx, t_cy);
-    printf("%.2f\n", finish-start);
+    //printf("%.2f\n", finish-start);
   }
-
-  MPI_Finalize();
-  free(grid);
-  free(par);
-  free(loc_par);
-  exit(0);
+  
+  exit_routine(loc_par);
+  return 0;
 }
