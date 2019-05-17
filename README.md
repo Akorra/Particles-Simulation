@@ -39,3 +39,11 @@ To run this project solutions GCC is advised.
 | n_part        | long long  | Number of particles to simulate.                    |
 | n_steps       | long       | Number of time-steps to simulate.                   |
 | n_procs       | int        | Number of processes                                 |
+
+#### Results
+|               | Serial     | OpenMP        | MPI                          |
+| Input         |            | 1 | 2 | 4 | 8 | 1 | 2 | 4 | 8 | 16 | 32 | 64 |
+|:-------------:|:----------:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:--:|:--:|:---|
+
+
+
